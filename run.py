@@ -12,28 +12,30 @@ data = pd.read_csv("game_data.csv")
 dataset = data.values
 data_mat = data.to_numpy()
 
+class PreProcessor:
 
-done = False
-i = 0
-while not done:
-    try:
-        if 'folds' in data_mat[i, 5]:
-            data_mat[i, 5] = 'Fold'
-        if 'calls' in data_mat[i, 5]:
-            data_mat[i, 5] = 'Call'
-        if 'bets' in data_mat[i, 5]:
-            data_mat[i, 5] = 'Bet'
-        if 'checks' in data_mat[i, 5]:
-            data_mat[i, 5] = 'Check'
-        if 'raises' in data_mat[i, 5]:
-            data_mat[i, 5] = 'Raise'
-        if 'allin' in data_mat[i, 5]:
-            data_mat[i, 5] = 'Allin'
-        i += 1
-        if i == data_mat.shape[0]:
-            done = True
-    except:
-        data_mat = np.delete(data_mat, i, 0)
+    def label_data(self):
+        done = False
+        i = 0
+        while not done:
+            try:
+                if 'folds' in data_mat[i, 5]:
+                    data_mat[i, 5] = 'Fold'
+                if 'calls' in data_mat[i, 5]:
+                    data_mat[i, 5] = 'Call'
+                if 'bets' in data_mat[i, 5]:
+                    data_mat[i, 5] = 'Bet'
+                if 'checks' in data_mat[i, 5]:
+                    data_mat[i, 5] = 'Check'
+                if 'raises' in data_mat[i, 5]:
+                    data_mat[i, 5] = 'Raise'
+                if 'allin' in data_mat[i, 5]:
+                    data_mat[i, 5] = 'Allin'
+                i += 1
+                if i == data_mat.shape[0]:
+                    done = True
+            except:
+                data_mat = np.delete(data_mat, i, 0)
 
 card_types = ['Ac', 'Ad', 'Ah', 'As',
               '2c', '2d', '2h', '2s', 
@@ -49,15 +51,21 @@ card_types = ['Ac', 'Ad', 'Ah', 'As',
               'Qc', 'Qd', 'Qh', 'Qs',
               'Kc', 'Kd', 'Kh', 'Ks']
 stages = ['PREFLOP', 'FLOP', 'TURN', 'RIVER']
+
+
+
 def OneHotEncoder(categories, data):
     res = np.zeros(len(categories))
     for i in range(len(data)):
         res[categories.index(data[i])] = 1
     return res
 
+
 limited_data = data_mat[0:DATA_POINTS]
 labels = limited_data[:,5]
+'''
 temp = []
+
 for i in range(DATA_POINTS):
     s = [data_mat[i, 0]]
     temp = np.concatenate((temp, OneHotEncoder(stages, s)))
@@ -77,7 +85,9 @@ for i in range(DATA_POINTS):
 encoded_data = temp.reshape(DATA_POINTS, 110)
 
 np.savetxt('encoded_data.csv', encoded_data, delimiter=",")
-
+'''
+dataFrame = pd.read_csv("encoded_data.csv", header=None)
+encoded_data = dataFrame.values
 
 encoder = LabelEncoder()
 #fit label encoder
