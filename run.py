@@ -1,93 +1,32 @@
 import pandas as pd
 import numpy as np
-from ast import literal_eval
 from sklearn.preprocessing import LabelEncoder
-from sklearn.preprocessing import OrdinalEncoder
 from keras.utils import np_utils
 from poker_NN_prototype import PokerNN
 from sklearn.model_selection import train_test_split
 import sys
 import time
-DATA_POINTS = 60000
-class PreProcessor:
-    self.data = pd.read_csv("game_data.csv")
-    self.dataset = data.values
-    self.data_mat = data.to_numpy()
-    self.limited_data = self.data_mat[0:DATA_POINTS]
 
-    def labelEncoder(self):
-        done = False
-        i = 0
-        while not done:
-            try:
-                if 'folds' in self.data_mat[i, 5]:
-                    self.data_mat[i, 5] = 'Fold'
-                if 'calls' in self.data_mat[i, 5]:
-                    self.data_mat[i, 5] = 'Bet'
-                if 'bets' in self.data_mat[i, 5]:
-                    self.data_mat[i, 5] = 'Bet'
-                if 'checks' in self.data_mat[i, 5]:
-                    self.data_mat[i, 5] = 'Check'
-                if 'raises' in self.data_mat[i, 5]:
-                    self.data_mat[i, 5] = 'Bet'
-                if 'allin' in self.data_mat[i, 5]:
-                    self.data_mat[i, 5] = 'Bet'
-                i += 1
-                if i == self.data_mat.shape[0]:
-                    done = True
-            except:
-                self.data_mat = np.delete(self.data_mat, i, 0)
-        limited_data = self.data_mat[0:DATA_POINTS]
-        return limited_data[:,5]
-    def featureEncoder(self):
-        card_types = ['Ac', 'Ad', 'Ah', 'As',
-                    '2c', '2d', '2h', '2s',
-                    '3c', '3d', '3h', '3s',
-                    '4c', '4d', '4h', '4s',
-                    '5c', '5d', '5h', '5s',
-                    '6c', '6d', '6h', '6s',
-                    '7c', '7d', '7h', '7s',
-                    '8c', '8d', '8h', '8s',
-                    '9c', '9d', '9h', '9s',
-                    'Tc', 'Td', 'Th', 'Ts',
-                    'Jc', 'Jd', 'Jh', 'Js',
-                    'Qc', 'Qd', 'Qh', 'Qs',
-                    'Kc', 'Kd', 'Kh', 'Ks']
-        stages = ['PREFLOP', 'FLOP', 'TURN', 'RIVER']
-        def OneHotEncoder(categories, data):
-            res = np.zeros(len(categories))
-            for i in range(len(data)):
-                res[categories.index(data[i])] = 1
-            return res
-        temp = []
-        for i in range(DATA_POINTS):
-            s = [self.data_mat[i, 0]]
-            temp = np.concatenate((temp, OneHotEncoder(stages, s)))
-            hole_cards = literal_eval(self.data_mat[i, 1])
-            temp = np.concatenate((temp, OneHotEncoder(card_types, hole_cards)))
-            if self.data_mat[i, 2] != '-1':
-                comm_cards = literal_eval(self.data_mat[i, 2])
-                temp = np.concatenate((temp, OneHotEncoder(card_types, comm_cards)))
-            else:
-                temp = np.concatenate((temp, np.zeros(52)))
-            arr = [self.data_mat[i, 3], self.data_mat[i, 4]]
-            temp = np.concatenate((temp, arr))
-            print(i)
-        encoded_data = temp.reshape(DATA_POINTS, 110)
-        np.savetxt('encoded_data.csv', encoded_data, delimiter=",")
 
-dataFrame = pd.read_csv("encoded_data.csv", header=None)
-encoded_data = dataFrame.values
-encoder = LabelEncoder()
-encoder.fit(labels)     #fit label encoder
-print(encoder.classes_)
-encodedLabels = encoder.transform(labels)       #transform labels into numerical representation
-binaryLabels = np_utils.to_categorical(encodedLabels)   #transform to one-hot encoded binary matrix
-inputFeatures = encoded_data.astype(float)
-print(inputFeatures.shape, binaryLabels.shape)
-nn = PokerNN((110, 16, 3), inputFeatures, binaryLabels, ('relu', 'softmax'))
-X_train, X_test, y_train, y_test = train_test_split(inputFeatures, binaryLabels, test_size=0.33)
-start_time = time.time()
-t_score = nn.eval(20,256,X_train, X_test, y_train, y_test)
-print(t_score, time.time() - start_time)
-#nn.kFoldCrossValidation(200, 5)
+def run():
+    data = pd.read_csv("game_data.csv")
+    data_mat = data.to_numpy()
+    limited_data = data_mat[0:60000]
+    labels = limited_data[:,5]
+    dataFrame = pd.read_csv("encoded_data.csv", header=None)
+    encoded_data = dataFrame.values
+    encoder = LabelEncoder()
+    encoder.fit(labels)     #fit label encoder
+    print(encoder.classes_)
+    encodedLabels = encoder.transform(labels)       #transform labels into numerical representation
+    binaryLabels = np_utils.to_categorical(encodedLabels)   #transform to one-hot encoded binary matrix
+    inputFeatures = encoded_data.astype(float)
+    print(inputFeatures.shape, binaryLabels.shape)
+    nn = PokerNN((110, 16, 3), inputFeatures, binaryLabels, ('relu', 'softmax'))
+    X_train, X_test, y_train, y_test = train_test_split(inputFeatures, binaryLabels, test_size=0.33)
+    start_time = time.time()
+    t_score = nn.eval(20,256,X_train, X_test, y_train, y_test)
+    print(t_score, time.time() - start_time)
+    #nn.kFoldCrossValidation(200, 5)
+
+run()
