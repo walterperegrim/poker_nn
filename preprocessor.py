@@ -1,13 +1,13 @@
 import pandas as pd
 import numpy as np
 from ast import literal_eval
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, OrdinalEncoder
 from poker_NN_prototype import PokerNN
 from sklearn.model_selection import train_test_split
 
 
 #number of data points to pull from data set
-DATA_POINTS = 60000
+DATA_POINTS = 63235
 
 class PreProcessor():
 
@@ -67,20 +67,26 @@ class PreProcessor():
         temp = []
         for i in range(DATA_POINTS):
             s = [self.data_mat[i, 0]]
+            whole_hand = np.zeros(52)
             temp = np.concatenate((temp, OneHotEncoder(stages, s)))
             hole_cards = literal_eval(self.data_mat[i, 1])
-            temp = np.concatenate((temp, OneHotEncoder(card_types, hole_cards)))
+            encoded_hole_cards = OneHotEncoder(card_types, hole_cards)
+            temp = np.concatenate((temp, encoded_hole_cards))
+            whole_hand += encoded_hole_cards
             if self.data_mat[i, 2] != '-1':
                 comm_cards = literal_eval(self.data_mat[i, 2])
-                temp = np.concatenate((temp, OneHotEncoder(card_types, comm_cards)))
+                encoded_comm_cards = OneHotEncoder(card_types, comm_cards)
+                temp = np.concatenate((temp, encoded_comm_cards))
+                whole_hand += encoded_comm_cards
             else:
                 temp = np.concatenate((temp, np.zeros(52)))
+            temp = np.concatenate((temp, whole_hand))
             arr = [self.data_mat[i, 3], self.data_mat[i, 4]]
             temp = np.concatenate((temp, arr))
             print(i)
-        encoded_data = temp.reshape(DATA_POINTS, 110)
-        np.savetxt('encoded_data.csv', encoded_data, delimiter=",")
+        encoded_data = temp.reshape(DATA_POINTS, 162)
+        np.savetxt('F:\\poker-nn\\encoded_data.csv', encoded_data, delimiter=",")
 
 
-#proc = PreProcessor()
-#proc.featureEncoder()
+proc = PreProcessor()
+proc.featureEncoder()

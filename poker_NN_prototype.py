@@ -8,6 +8,7 @@ from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import LabelEncoder
 from sklearn.pipeline import Pipeline
+import matplotlib.pyplot as plt
 
 #simple 4 layer configurable neural network
 class PokerNN:
@@ -36,7 +37,7 @@ class PokerNN:
         results = cross_val_score(estimator, self.features, self.labels, cv=kfold)
         print("Baseline: %.2f%% (%.2f%%)" % (results.mean()*100, results.std()*100))
 
-    def eval(self, epochs, batch_size, X_train, X_test, y_train, y_test):
+    def eval(self, epochs, batch_size, X_train, X_test, y_train, y_test, plot):
         labels = ['Bet', 'Check', 'Fold']
         model = Sequential()
         model.add(Dense(self.hiddenNodes, input_dim=self.inputNodes, activation=self.hiddenActivation))
@@ -44,31 +45,34 @@ class PokerNN:
         model.add(Dense(self.hiddenNodes, activation=self.hiddenActivation))
         model.add(Dense(self.outputNodes, activation=self.outputActivation))
         model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
-        model.fit(X_train, y_train, epochs = epochs, batch_size = batch_size, verbose=0)
+        hist = model.fit(X_train, y_train, epochs = epochs, batch_size = batch_size, verbose=0)
+
+        if plot:
+            self.plot(hist)
+
         test_score = model.evaluate(X_test, y_test,batch_size=batch_size)
+
         #yhats = [list(x) for x in model.predict(X_test,batch_size=batch_size)]
         #new_hats = [labels[np.argmax(yhat)] for yhat in yhats]
         #new_test = [labels[np.argmax(y)] for y in y_test]
         #x = np.sum([1 for i in range(len(new_test)) if new_test[i] == new_hats[i]]) / len(new_test)
         #print(test_score,x)
+
         return test_score
+    
+    def plot(self, data):
+        plt.plot(data.history['val_accuracy'])
+        plt.title('model accuracy')
+        plt.ylabel('accuracy')
+        plt.xlabel('epoch')
+        plt.legend(['train accuracy'], loc='upper left')
+        plt.show()
 
-'''
-#######testing with iris flower data set, another three-class problem. will be removed later #######
-dataFrame = pandas.read_csv("iris.data", header=None)
-dataset = dataFrame.values
-inputFeatures = dataset[:,0:4].astype(float)
-labels = dataset[:,4]
-encoder = LabelEncoder()
-#fit label encoder
-encoder.fit(labels)
-#transform labels into numerical representation
-encodedLabels = encoder.transform(labels)
-#transform to one-hot encoded binary matrix
-print(labels, labels.shape)
-binaryLabels = np_utils.to_categorical(encodedLabels)
+        plt.plot(data.history['loss'])
+        plt.title('model loss')
+        plt.ylabel('loss')
+        plt.xlabel('epoch')
+        plt.legend(['train loss'], loc='upper left')
+        plt.show()
 
-print(binaryLabels.shape, inputFeatures.shape)
-nn = PokerNN((4, 8, 3), inputFeatures, binaryLabels, ('relu', 'softmax'))
-nn.kFoldCrossValidation(200, 5)
-'''
+
