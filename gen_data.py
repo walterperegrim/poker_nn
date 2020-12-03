@@ -24,11 +24,19 @@ def trans_cards(cards):                                                         
         trans.append([Card.int_to_str(card)[0], Card.int_to_str(card)[1]])
     return trans
 
-def get_metric(stage,potential,strength):                                       #account for hand strength and potential
-    states = ['hole','flop','turn','river']
-    int_state = states.index(stage) + 1
-    prob = float(int_state * (9 - strength) + (potential / int_state))
-    return prob
+# Estimate the ratio of winning games given the current state of the game
+def estimate_win_rate(num_players,hole_cards,community_cards,deck):
+    items = deck
+    opponents_hole = [[items[i],items[j]] for i in range(len(items)) for j in range(i+1, len(items))]
+    opponent_scores = []
+    for h in opponents_hole:
+        hand_potential = 1 - evaluator.get_five_card_rank_percentage(evaluator.evaluate(community_cards, h))
+        opponent_scores.append(hand_potential)
+
+    hand_potential = 1 - evaluator.get_five_card_rank_percentage(evaluator.evaluate(community_cards, hole_cards))
+    my_score = hand_potential
+    win_prob = [1  for s in opponent_scores if my_score >= s]
+    return len(win_prob) / len(opponent_scores)
 
 #NOTE: all player classes are very similar, only difference are the quality of hands played
 class AgressivePlayer:
@@ -40,61 +48,27 @@ class AgressivePlayer:
         self.hand_strength = 9
         self.hand_potential = 0
         self.action = ''
-        self.metric = -1.0
+        self.rest_cards = Deck().cards
+        self.win_prob = 0.0
+
     def set_cards(self,cards):
         self.hand_cards = cards
         self.string_cards = trans_cards(self.hand_cards)
 
-    def update_strength_potential(self,stage,board):
-
-        if stage == 'hole':
-            self.hand_potential = calc_hand_potential(self.string_cards)
-            if self.string_cards[0][0] == self.string_cards[1][0]:
-                self.hand_strength = 8
-            else:
-                self.hand_strength = 9
-        else:
-            self.hand_strength = evaluator.get_rank_class(evaluator.evaluate(poker.board, self.hand_cards))
-            self.hand_potential = 1 - evaluator.get_five_card_rank_percentage(evaluator.evaluate(board, self.hand_cards))
-
     def take_action(self,stage,actions):
         action = ''
-        prob = get_metric(stage,float(self.hand_potential),int(self.hand_strength))
-        self.metric = prob
-        if stage == 'hole':
-            if prob > -0.14 and prob < 0.0:     #check
-                action = actions[1]
-            elif prob >= 0.0:     #bet
-                action = actions[2]
-            else:                               #fold
-                action = actions[0]
-        elif stage == 'flop':
-            if (prob > 0.03 and prob < 2.0):
-                action = actions[1]
-            elif prob >= 2.0:
-                action = actions[2]
-            else:
-                action = actions[0]
-        elif stage == 'turn':
-            if (prob > 0.05 and prob < 3.0):
-                action = actions[1]
-            elif prob >= 3.0:
-                action = actions[2]
-            else:
-                action = actions[0]
+        if self.win_prob < 0.1:
+            action = actions[0]
+        elif self.win_prob >= 0.1 and self.win_prob < 0.4:
+            action = actions[1]
         else:
-            if (prob > 0.05 and prob < 4.0):
-                action = actions[1]
-            elif prob >= 4.0:
-                action = actions[2]
-            else:
-                action = actions[0]
+            action = actions[2]
 
         self.action = action
         return action
 
     def __str__(self):
-        return self.name + ": " + str(self.string_cards[0]) + ", " + str(self.string_cards[1]) + ", " + str(self.hand_strength) + ", " + str(self.hand_potential)
+        return self.name + ": " + str(self.string_cards[0]) + ", " + str(self.string_cards[1]) + ", " + str(self.win_prob)
 
 class AveragePlayer:
     def __init__(self,name,money):
@@ -105,59 +79,26 @@ class AveragePlayer:
         self.hand_strength = 9
         self.hand_potential = 0
         self.action = ''
-        self.metric = -1.0
+        self.rest_cards = Deck().cards
+        self.win_prob = 0.0
+
     def set_cards(self,cards):
         self.hand_cards = cards
         self.string_cards = trans_cards(self.hand_cards)
 
-    def update_strength_potential(self,stage,board):
-        if stage == 'hole':
-            self.hand_potential = calc_hand_potential(self.string_cards)
-            if self.string_cards[0][0] == self.string_cards[1][0]:
-                self.hand_strength = 8
-            else:
-                self.hand_strength = 9
-        else:
-            self.hand_strength = evaluator.get_rank_class(evaluator.evaluate(poker.board, self.hand_cards))
-            self.hand_potential = 1 - evaluator.get_five_card_rank_percentage(evaluator.evaluate(board, self.hand_cards))
-
     def take_action(self,stage,actions):
         action = ''
-        prob = get_metric(stage,float(self.hand_potential),int(self.hand_strength))
-        self.metric = prob
-        if stage == 'hole':
-            if prob > -0.07 and prob < 0.04:     #check
-                action = actions[1]
-            elif prob >= 0.04:     #bet
-                action = actions[2]
-            else:                               #fold
-                action = actions[0]
-        elif stage == 'flop':
-            if (prob > 0.05 and prob < 2.0):
-                action = actions[1]
-            elif prob >= 2.0:
-                action = actions[2]
-            else:
-                action = actions[0]
-        elif stage == 'turn':
-            if (prob > 3.0 and prob < 6.0):
-                action = actions[1]
-            elif prob >= 6.0:
-                action = actions[2]
-            else:
-                action = actions[0]
+        if self.win_prob < 0.2:
+            action = actions[0]
+        elif self.win_prob >= 0.2 and self.win_prob < 0.5:
+            action = actions[1]
         else:
-            if (prob > 4.0 and prob < 8.0):
-                action = actions[1]
-            elif prob >= 8.0:
-                action = actions[2]
-            else:
-                action = actions[0]
+            action = actions[2]
         self.action = action
         return action
 
     def __str__(self):
-        return self.name + ": " + str(self.string_cards[0]) + ", " + str(self.string_cards[1]) + ", " + str(self.hand_strength) + ", " + str(self.hand_potential)
+        return self.name + ": " + str(self.string_cards[0]) + ", " + str(self.string_cards[1]) + ", " + str(self.win_prob)
 
 class SafePlayer:
     def __init__(self,name,money):
@@ -168,61 +109,27 @@ class SafePlayer:
         self.hand_strength = 9
         self.hand_potential = 0
         self.action = ''
-        self.metric = -1.0
+        self.win_prob = 0.0
+        self.rest_cards = Deck().cards
+
     def set_cards(self,cards):
         self.hand_cards = cards
         self.string_cards = trans_cards(self.hand_cards)
 
-    def update_strength_potential(self,stage,board):
-        if stage == 'hole':
-            self.hand_potential = calc_hand_potential(self.string_cards)
-            if self.string_cards[0][0] == self.string_cards[1][0]:
-                self.hand_strength = 8
-            else:
-                self.hand_strength = 9
-        else:
-            self.hand_strength = evaluator.get_rank_class(evaluator.evaluate(poker.board, self.hand_cards))
-            self.hand_potential = 1 - evaluator.get_five_card_rank_percentage(evaluator.evaluate(board, self.hand_cards))
-
-
     def take_action(self,stage,actions):
         action = ''
-        prob = get_metric(stage,float(self.hand_potential),int(self.hand_strength))
-        self.metric = prob
-        if stage == 'hole':
-            if prob >= 0.0 and prob < 0.4:     #check
-                action = actions[1]
-            elif prob >= 0.4:     #bet
-                action = actions[2]
-            else:                               #fold
-                action = actions[0]
-        elif stage == 'flop':
-            if (prob > 2.0 and prob < 4.0):
-                action = actions[1]
-            elif prob >= 4.0:
-                action = actions[2]
-            else:
-                action = actions[0]
-        elif stage == 'turn':
-            if (prob > 3.0 and prob < 9.0):
-                action = actions[1]
-            elif prob >= 9.0:
-                action = actions[2]
-            else:
-                action = actions[0]
+        if self.win_prob < 0.3:
+            action = actions[0]
+        elif self.win_prob >= 0.3 and self.win_prob < 0.75:
+            action = actions[1]
         else:
-            if (prob > 4.0 and prob < 12.0):
-                action = actions[1]
-            elif prob >= 12.0:
-                action = actions[2]
-            else:
-                action = actions[0]
+            action = actions[2]
 
         self.action = action
         return action
 
     def __str__(self):
-        return self.name + ": " + str(self.string_cards[0]) + ", " + str(self.string_cards[1]) + ", " + str(self.hand_strength) + ", " + str(self.hand_potential)
+        return self.name + ": " + str(self.string_cards[0]) + ", " + str(self.string_cards[1]) + ", " + str(self.win_prob)
 
 class MyPlayer:
     def __init__(self,name,money):
@@ -233,61 +140,26 @@ class MyPlayer:
         self.hand_strength = 9
         self.hand_potential = 0
         self.action = ''
-        self.metric = -1.0
+        self.win_prob = 0.0
+        self.rest_cards = Deck().cards
+
     def set_cards(self,cards):
         self.hand_cards = cards
         self.string_cards = trans_cards(self.hand_cards)
 
-    def update_strength_potential(self,stage,board):
-        if stage == 'hole':
-            self.hand_potential = calc_hand_potential(self.string_cards)
-            if self.string_cards[0][0] == self.string_cards[1][0]:
-                self.hand_strength = 8
-            else:
-                self.hand_strength = 9
-        else:
-            self.hand_strength = evaluator.get_rank_class(evaluator.evaluate(poker.board, self.hand_cards))
-            self.hand_potential = 1 - evaluator.get_five_card_rank_percentage(evaluator.evaluate(board, self.hand_cards))
-
     def take_action(self,stage,actions):
         action = ''
-        prob = get_metric(stage,float(self.hand_potential),int(self.hand_strength))
-        self.metric = prob
-        if stage == 'hole':
-            if prob > -0.07 and prob < 0.04:     #check
-                action = actions[1]#'check'
-            elif prob >= 0.04:     #bet
-                action = actions[2]#'bet'
-            else:                               #fold
-                action = actions[0]#'fold'
-        elif stage == 'flop':
-            if (prob > 0.05 and prob < 2.0):
-                action = actions[1]
-            elif prob >= 2.0:
-                action = actions[2]
-            else:
-                action = actions[0]
-        elif stage == 'turn':
-            if (prob > 3.0 and prob < 6.0):
-                action = actions[1]
-            elif prob >= 6.0:
-                action = actions[2]
-            else:
-                action = actions[0]
+        if self.win_prob < 0.2:
+            action = actions[0]
+        elif self.win_prob >= 0.2 and self.win_prob < 0.5:
+            action = actions[1]
         else:
-            if (prob > 4.0 and prob < 8.0):
-                action = actions[1]
-            elif prob >= 8.0:
-                action = actions[2]
-            else:
-                action = actions[0]
-
+            action = actions[2]
         self.action = action
         return action
 
     def __str__(self):
-        return self.name + ": " + str(self.string_cards[0]) + ", " + str(self.string_cards[1]) + ", " + str(self.hand_strength) + ", " + str(self.hand_potential)
-
+        return self.name + ": " + str(self.string_cards[0]) + ", " + str(self.string_cards[1]) + ", " + str(self.win_prob)
 #Class for tracking game data
 class Poker:
     def __init__(self):
@@ -297,44 +169,59 @@ class Poker:
         self.board = []
         self.state = 'hole'
         self.big_blind = 'myPlayer'
+
     def add_players(self,players):
         for player in players:
             self.num_players += 1
             self.players.append(player)
+
     def deal(self):                                                             #Deal cards
         print()
         print(self.state.upper())
         if self.state == 'hole':
             for player in self.players:
                 player.set_cards(self.deck.draw(2))
-                player.update_strength_potential(self.state,self.board)
+                player.hand_potential = calc_hand_potential(player.string_cards)
+                player.win_prob = 10 * ((1.0-0.0)/(2.32--0.15)*(float(player.hand_potential)-2.32)+1.0)
+                print(player)
+                player.rest_cards.remove(player.hand_cards[0])
+                player.rest_cards.remove(player.hand_cards[1])
                 if player.name == self.big_blind:
-                    player.metric = get_metric(self.state,float(player.hand_potential),int(player.hand_strength))
+                    #player.metric = get_metric(self.state,float(player.hand_potential),int(player.hand_strength))
                     player.action = 'call'
-            self.act()                                                          #get player action
-            self.state = 'flop'
+            self.act()
+            if len(self.players) > 1:                                                          #get player action
+                self.state = 'flop'
 
         elif self.state == 'flop':
             self.board = self.deck.draw(3)
             print(trans_cards(self.board))
             for player in self.players:
-                player.update_strength_potential(self.state,self.board)
+                for k in self.board:
+                    player.rest_cards.remove(k)
+                player.win_prob = estimate_win_rate(self.num_players,player.hand_cards,self.board,player.rest_cards)
+
             self.act()
-            self.state = 'turn'
+            if len(self.players) > 1:
+                self.state = 'turn'
 
         elif self.state == 'turn':
             self.board.append(self.deck.draw(1))
             print(trans_cards(self.board))
             for player in self.players:
-                player.update_strength_potential(self.state,self.board)
+                player.rest_cards.remove(self.board[3])
+                player.win_prob = estimate_win_rate(self.num_players,player.hand_cards,self.board,player.rest_cards)
             self.act()
-            self.state = 'river'
+            if len(self.players) > 1:
+                self.state = 'river'
 
         elif self.state == 'river':
             self.board.append(self.deck.draw(1))
             print(trans_cards(self.board))
             for player in self.players:
-                player.update_strength_potential(self.state,self.board)
+                player.rest_cards.remove(self.board[4])
+                player.win_prob = estimate_win_rate(self.num_players,player.hand_cards,self.board,player.rest_cards)
+
             self.act()
             self.state = 'showdown'
 
@@ -342,17 +229,15 @@ class Poker:
             best_hand = 0.0
             winner = self.players[0]
             for k in self.players:
-                if k.hand_potential > best_hand:
-                    best_hand = k.hand_potential
+                if (k.win_prob) > best_hand:
+                    best_hand = k.win_prob
                     winner = k
             self.players = [winner]
             self.get_result()
 
     def get_result(self):
         print()
-        print("HAND OVER")
         print("WINNER:", self.players[0])
-        sys.exit()
 
     def handle_bet(self,current_players,ordered_players,actions):
         prev_action = 'bet'
@@ -360,7 +245,7 @@ class Poker:
         t = 0
         for player in ordered_players:
             curr_action = player.take_action(self.state,actions)
-            print(player,curr_action)
+            print(player.name,player.win_prob,curr_action)
             if curr_action == 'fold':   #remove folded
                 current_players.remove(player)
 
@@ -391,7 +276,7 @@ class Poker:
             elif prev_action == 'call' or prev_action == 'fold':
                 curr_action = player.take_action(self.state,['fold', 'call','bet'])
 
-            print(player,curr_action)
+            print(player.name,player.win_prob,curr_action)
             if curr_action == 'fold':
                 current_players.remove(player)
 
@@ -404,14 +289,16 @@ class Poker:
             prev_action = curr_action
         self.players = current_players
         if len(self.players) == 1:
-            self.get_result()
+            self.state = 'showdown'
 
-poker = Poker()
-w = MyPlayer("myPlayer",100)
-e = AgressivePlayer("agressivePlayer",50)
-a = AveragePlayer("averagePlayer",25)
-p = SafePlayer("safePlayer",50)
-poker.add_players([w,e,a,p])
-poker.deal()
-for state in ['flop','flop+turn','flop+turn+river']:    #iterate through stages of hand
-    poker.deal()
+for i in range(10):
+    poker = Poker()
+    w = MyPlayer("myPlayer",100)
+    e = AgressivePlayer("agressivePlayer",50)
+    a = AveragePlayer("averagePlayer",25)
+    p = SafePlayer("safePlayer",50)
+    poker.add_players([w,e,a,p])
+    for state in ['hole','flop','flop+turn','flop+turn+river']:    #iterate through stages of hand
+        poker.deal()
+        if poker.state == 'showdown':
+            break
