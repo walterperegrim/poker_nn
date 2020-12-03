@@ -1,11 +1,15 @@
 import json
 import sys
 import csv
+import keras
 from treys import Card, Deck, Evaluator
 import numpy as np
+from preprocessor import PreProcessor
 
 pair_strengths = json.load(open('new_hole_card_rankings.json'))
 evaluator = Evaluator()
+model = keras.models.load_model('best_model')
+pre = PreProcessor()
 
 def calc_hand_potential(my_cards):                                              #calculates hand potentials for hole stage
     hole = sorted(my_cards,key=lambda c:c[0], reverse=True)
@@ -38,6 +42,10 @@ def estimate_win_rate(num_players,hole_cards,community_cards,deck):
     win_prob = [1  for s in opponent_scores if my_score >= s]
     return len(win_prob) / len(opponent_scores)
 
+
+
+
+
 #NOTE: all player classes are very similar, only difference are the quality of hands played
 class AgressivePlayer:
     def __init__(self,name,money):
@@ -50,11 +58,14 @@ class AgressivePlayer:
         self.action = ''
         self.rest_cards = Deck().cards
         self.win_prob = 0.0
+        self.comm_cards = []
 
     def set_cards(self,cards):
         self.hand_cards = cards
         self.string_cards = trans_cards(self.hand_cards)
 
+    def set_comm_cards(self, cards):
+        self.comm_cards = cards
     def take_action(self,stage,actions):
         action = ''
         if self.win_prob < 0.1:
@@ -81,10 +92,15 @@ class AveragePlayer:
         self.action = ''
         self.rest_cards = Deck().cards
         self.win_prob = 0.0
+        self.comm_cards = []
 
     def set_cards(self,cards):
         self.hand_cards = cards
         self.string_cards = trans_cards(self.hand_cards)
+    
+    def set_comm_cards(self, cards):
+        self.comm_cards = cards
+     
 
     def take_action(self,stage,actions):
         action = ''
@@ -111,10 +127,13 @@ class SafePlayer:
         self.action = ''
         self.win_prob = 0.0
         self.rest_cards = Deck().cards
-
+        self.comm_cards = []
     def set_cards(self,cards):
         self.hand_cards = cards
         self.string_cards = trans_cards(self.hand_cards)
+
+    def set_comm_cards(self, cards):
+        self.comm_cards = cards
 
     def take_action(self,stage,actions):
         action = ''
@@ -142,12 +161,44 @@ class MyPlayer:
         self.action = ''
         self.win_prob = 0.0
         self.rest_cards = Deck().cards
+        self.comm_cards = []
 
     def set_cards(self,cards):
         self.hand_cards = cards
         self.string_cards = trans_cards(self.hand_cards)
 
+    def set_comm_cards(self, cards):
+        self.comm_cards = cards
+        print("PLAYER", trans_cards(self.comm_cards))
+
     def take_action(self,stage,actions):
+        enc_data = pre.encode_datapoint(stage, self.string_cards, trans_cards(self.comm_cards), self.hand_potential, self.hand_strength)
+        a = model.predict(enc_data.reshape(1, 110).astype(float))
+        a_idx = np.argmax(a)
+    
+        print("MYPlayer ACTIONS:  ", actions)
+        prediction = ''
+        if a_idx == 0:
+            prediction = 'bet'
+        if a_idx == 1:
+            prediction = 'check'
+        if a_idx == 2:
+            prediction = 'fold'
+        
+        if prediction == 'bet' and 'bet' in actions:
+            return 'bet'
+        elif prediction == 'bet' and 'raise' in actions:
+            return 'call'
+        elif prediction == 'bet' and 're-raise' in actions:
+            return 'raise'
+        elif prediction == 'bet' and 'call' in actions:
+            return 'raise'
+        elif prediction == 'check' and 'check' in actions:
+            return 'check'
+        else:
+            return 'fold'
+
+        ''' 
         action = ''
         if self.win_prob < 0.2:
             action = actions[0]
@@ -157,6 +208,7 @@ class MyPlayer:
             action = actions[2]
         self.action = action
         return action
+        '''
 
     def __str__(self):
         return self.name + ": " + str(self.string_cards[0]) + ", " + str(self.string_cards[1]) + ", " + str(self.win_prob)
@@ -169,6 +221,7 @@ class Poker:
         self.board = []
         self.state = 'hole'
         self.big_blind = 'myPlayer'
+        self.my_player_wins = False
 
     def add_players(self,players):
         for player in players:
@@ -197,6 +250,7 @@ class Poker:
             self.board = self.deck.draw(3)
             print(trans_cards(self.board))
             for player in self.players:
+                player.set_comm_cards(self.board)
                 for k in self.board:
                     player.rest_cards.remove(k)
                 player.win_prob = estimate_win_rate(self.num_players,player.hand_cards,self.board,player.rest_cards)
@@ -209,6 +263,7 @@ class Poker:
             self.board.append(self.deck.draw(1))
             print(trans_cards(self.board))
             for player in self.players:
+                player.set_comm_cards(self.board)
                 player.rest_cards.remove(self.board[3])
                 player.win_prob = estimate_win_rate(self.num_players,player.hand_cards,self.board,player.rest_cards)
             self.act()
@@ -219,6 +274,7 @@ class Poker:
             self.board.append(self.deck.draw(1))
             print(trans_cards(self.board))
             for player in self.players:
+                player.set_comm_cards(self.board)
                 player.rest_cards.remove(self.board[4])
                 player.win_prob = estimate_win_rate(self.num_players,player.hand_cards,self.board,player.rest_cards)
 
@@ -237,6 +293,8 @@ class Poker:
 
     def get_result(self):
         print()
+        if self.players[0].name == "myPlayer":
+            self.my_player_wins = True
         print("WINNER:", self.players[0])
 
     def handle_bet(self,current_players,ordered_players,actions):
@@ -291,14 +349,21 @@ class Poker:
         if len(self.players) == 1:
             self.state = 'showdown'
 
-for i in range(10):
+for i in range(100):
     poker = Poker()
     w = MyPlayer("myPlayer",100)
     e = AgressivePlayer("agressivePlayer",50)
     a = AveragePlayer("averagePlayer",25)
     p = SafePlayer("safePlayer",50)
-    poker.add_players([w,e,a,p])
+    #poker.add_players([w,e,a,p])
+    #poker.add_players([w, e])
+    #poker.add_players([w, a])
+    poker.add_players([w, p])
+    my_wins = 0
     for state in ['hole','flop','flop+turn','flop+turn+river']:    #iterate through stages of hand
         poker.deal()
         if poker.state == 'showdown':
+            if poker.my_player_wins == True:
+                my_wins += 1
             break
+    print("Model won ", my_wins, "out of 100 games")

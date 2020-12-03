@@ -7,6 +7,7 @@ from sklearn.model_selection import train_test_split
 import sys
 import time
 from nn_tuner import tune
+from preprocessor import PreProcessor
 
 NUM_FEATURES = 110
 DATA_POINTS = 60000
@@ -44,9 +45,8 @@ def run_vary_epochs():
         print(t_score, time.time() - start_time)
 
 def run_and_tune(tuner_type):
-
     x_train, x_test, y_train, y_test = train_test_split(inputFeatures, binaryLabels, test_size=0.33)
-    return tune(5, x_train, y_train, x_test, y_test, tuner_type, NUM_FEATURES)
+    return tune(2, x_train, y_train, x_test, y_test, tuner_type, NUM_FEATURES)
 
 def compare():
     res1 = run()
@@ -54,9 +54,18 @@ def compare():
     res2 = run_and_tune("random")
     print("After tuning:   ", res2)
    
-run()
+def run_ordinal():
+    nn = PokerNN((NUM_FEATURES, 16, 3), inputFeatures, binaryLabels, ('relu', 'softmax'))
+    pre = PreProcessor()
+    print("Encoding Ordinally......")
+    inputs = pre.Ordinal()
+    x_train, x_test, y_train, y_test = train_test_split(inputs, binaryLabels, test_size=0.33)
+    tune(5, x_train, y_train, x_test, y_test, "random", NUM_FEATURES)
+
+#run()
 #run_vary_epochs()
 run_and_tune("random")
 #run_and_tune("hyperband")
 #run_and_tune("bayes")
 #compare()
+#run_ordinal()

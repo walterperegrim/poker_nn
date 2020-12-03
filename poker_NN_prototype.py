@@ -59,7 +59,7 @@ class PokerNN:
         #print(test_score,x)
 
         return test_score
-    
+        
     def plot(self, data):
         plt.plot(data.history['val_accuracy'])
         plt.title('model accuracy')

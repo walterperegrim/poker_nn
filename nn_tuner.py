@@ -69,7 +69,7 @@ def tune(epochs, x_train, y_train, x_test, y_test, tuner_type, input_dim):
             hypermodel, 
             objective ='val_accuracy',
             seed = 1, 
-            max_trials = 10000,
+            max_trials = 1,
             executions_per_trial=2,
             directory='F:\\poker-nn\\random_search',
             project_name='poker-nn'
@@ -91,7 +91,7 @@ def tune(epochs, x_train, y_train, x_test, y_test, tuner_type, input_dim):
     tuner.search(x_train, y_train, epochs=epochs, validation_split=0.1)
     #tuner.results_summary()
     best= tuner.get_best_models(num_models=1)[0]
-
+    best.save("best_model")
     loss, accuracy = best.evaluate(x_test, y_test, batch_size=256)
     #print("Testing Loss: ", loss)
     #print("Testing Accuracy: ", accuracy)
