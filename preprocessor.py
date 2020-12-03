@@ -41,6 +41,42 @@ class PreProcessor():
                 self.data_mat = np.delete(self.data_mat, i, 0)
         limited_data = self.data_mat[0:DATA_POINTS]
         return limited_data[:,5]
+    
+    def encode_datapoint(self, stage, hole_cards, comm_cards, hand_strength, hand_potential):
+        card_types = [['A','c'], ['A','d'], ['A','h'],['A', 's'],
+                      ['2','c'], ['2','d'], ['2','h'],['2', 's'],
+                      ['3','c'], ['3','d'], ['3','h'],['3', 's'],
+                      ['4','c'], ['4','d'], ['4','h'],['4', 's'],
+                      ['5','c'], ['5','d'], ['5','h'],['5', 's'],
+                      ['6','c'], ['6','d'], ['6','h'],['6', 's'], 
+                      ['7','c'], ['7','d'], ['7','h'],['7', 's'],
+                      ['8','c'], ['8','d'], ['8','h'],['8', 's'],
+                      ['9','c'], ['9','d'], ['9','h'],['9', 's'],
+                      ['T','c'], ['T','d'], ['T','h'],['T', 's'],
+                      ['J','c'], ['J','d'], ['J','h'],['J', 's'],
+                      ['Q','c'], ['Q','d'], ['Q','h'],['Q', 's'],
+                      ['K','c'], ['K','d'], ['K','h'],['K', 's']] 
+        stages = ['hole', 'flop', 'turn', 'river']
+        temp = []
+        stage_enc = np.zeros(4)
+        stage_enc[stages.index(stage)] = 1
+        temp = np.concatenate((temp, stage_enc))
+        temp = np.concatenate((temp, self.OneHotEncoder(card_types, hole_cards)))
+    
+        if not comm_cards:
+            temp = np.concatenate((temp, np.zeros(52)))
+        else:
+            temp = np.concatenate((temp, self.OneHotEncoder(card_types, comm_cards)))
+
+        hand_stats = [hand_potential, hand_strength]
+        temp = np.concatenate((temp, hand_stats))
+        return temp
+
+    def OneHotEncoder(self, categories, data):
+        res = np.zeros(len(categories))
+        for i in range(len(data)):
+            res[categories.index(data[i])] = 1
+        return res
 
     def featureEncoder(self):
         card_types = ['Ac', 'Ad', 'Ah', 'As',
@@ -58,24 +94,19 @@ class PreProcessor():
                     'Kc', 'Kd', 'Kh', 'Ks']
         stages = ['PREFLOP', 'FLOP', 'TURN', 'RIVER']
 
-        def OneHotEncoder(categories, data):
-            res = np.zeros(len(categories))
-            for i in range(len(data)):
-                res[categories.index(data[i])] = 1
-            return res
 
         temp = []
         for i in range(DATA_POINTS):
             s = [self.data_mat[i, 0]]
             whole_hand = np.zeros(52)
-            temp = np.concatenate((temp, OneHotEncoder(stages, s)))
+            temp = np.concatenate((temp, self.OneHotEncoder(stages, s)))
             hole_cards = literal_eval(self.data_mat[i, 1])
-            encoded_hole_cards = OneHotEncoder(card_types, hole_cards)
+            encoded_hole_cards = self.OneHotEncoder(card_types, hole_cards)
             temp = np.concatenate((temp, encoded_hole_cards))
             whole_hand += encoded_hole_cards
             if self.data_mat[i, 2] != '-1':
                 comm_cards = literal_eval(self.data_mat[i, 2])
-                encoded_comm_cards = OneHotEncoder(card_types, comm_cards)
+                encoded_comm_cards = self.OneHotEncoder(card_types, comm_cards)
                 temp = np.concatenate((temp, encoded_comm_cards))
                 whole_hand += encoded_comm_cards
             else:
@@ -86,7 +117,14 @@ class PreProcessor():
             print(i)
         encoded_data = temp.reshape(DATA_POINTS, 162)
         np.savetxt('F:\\poker-nn\\encoded_data.csv', encoded_data, delimiter=",")
+    def Ordinal(self):
+        X = self.dataset[0:60000, :-1]
+        #y = self.dataset[:,-1]
+        #y = y.reshape((len(y), 1))
+        oe = OrdinalEncoder()
+        oe.fit(X)
+        x_enc = oe.transform(X)
+        return x_enc
 
-
-proc = PreProcessor()
-proc.featureEncoder()
+#proc = PreProcessor()
+#proc.featureEncoder()

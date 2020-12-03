@@ -55,6 +55,7 @@ class PokerNN:
         #x = np.sum([1 for i in range(len(new_test)) if new_test[i] == new_hats[i]]) / len(new_test)
         #print(test_score,x)
         return test_score
+<<<<<<< HEAD
 
     def opponent_modeling(self, epochs, batch_size, X_train, X_test, y_train, y_test):
         model = Sequential()
@@ -68,6 +69,9 @@ class PokerNN:
         x = r2_score(y_test, yhats)
         return x
 
+=======
+        
+>>>>>>> 52512730851830c5fe16a09e8633ddb2639b99b8
     def plot(self, data):
         plt.plot(data.history['val_accuracy'])
         plt.title('model accuracy')
