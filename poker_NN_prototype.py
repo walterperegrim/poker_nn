@@ -9,7 +9,7 @@ from sklearn.model_selection import KFold
 from sklearn.preprocessing import LabelEncoder
 from sklearn.pipeline import Pipeline
 import matplotlib.pyplot as plt
-
+from sklearn.metrics import r2_score
 #simple 4 layer configurable neural network
 class PokerNN:
 
@@ -46,20 +46,28 @@ class PokerNN:
         model.add(Dense(self.outputNodes, activation=self.outputActivation))
         model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
         hist = model.fit(X_train, y_train, epochs = epochs, batch_size = batch_size, verbose=0)
-
         if plot:
             self.plot(hist)
-
         test_score = model.evaluate(X_test, y_test,batch_size=batch_size)
-
         #yhats = [list(x) for x in model.predict(X_test,batch_size=batch_size)]
         #new_hats = [labels[np.argmax(yhat)] for yhat in yhats]
         #new_test = [labels[np.argmax(y)] for y in y_test]
         #x = np.sum([1 for i in range(len(new_test)) if new_test[i] == new_hats[i]]) / len(new_test)
         #print(test_score,x)
-
         return test_score
-    
+
+    def opponent_modeling(self, epochs, batch_size, X_train, X_test, y_train, y_test):
+        model = Sequential()
+        model.add(Dense(32, input_dim=13, activation='relu'))
+        model.add(Dense(32, activation='relu'))
+        model.add(Dense(18, activation='relu'))
+        model.add(Dense(1))
+        model.compile(loss='mean_squared_error', optimizer='adam')
+        hist = model.fit(X_train, y_train, epochs = 20, batch_size = 128, verbose=1)
+        yhats = [list(x)[0] for x in model.predict(X_test,batch_size=128)]
+        x = r2_score(y_test, yhats)
+        return x
+
     def plot(self, data):
         plt.plot(data.history['val_accuracy'])
         plt.title('model accuracy')
@@ -74,5 +82,3 @@ class PokerNN:
         plt.xlabel('epoch')
         plt.legend(['train loss'], loc='upper left')
         plt.show()
-
-

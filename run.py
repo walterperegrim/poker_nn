@@ -8,10 +8,10 @@ import sys
 import time
 from nn_tuner import tune
 
+
 NUM_FEATURES = 110
 DATA_POINTS = 60000
 FILENAME = "encoded_data.csv"
-
 data = pd.read_csv("game_data.csv")
 data_mat = data.to_numpy()
 limited_data = data_mat[0:DATA_POINTS]
@@ -34,7 +34,6 @@ def run():
     #nn.kFoldCrossValidation(200, 5)
 
 def run_vary_epochs():
-
     nn = PokerNN((NUM_FEATURES, 16, 3), inputFeatures, binaryLabels, ('relu', 'softmax'))
     X_train, X_test, y_train, y_test = train_test_split(inputFeatures, binaryLabels, test_size=0.33)
     start_time = time.time()
@@ -44,7 +43,6 @@ def run_vary_epochs():
         print(t_score, time.time() - start_time)
 
 def run_and_tune(tuner_type):
-
     x_train, x_test, y_train, y_test = train_test_split(inputFeatures, binaryLabels, test_size=0.33)
     return tune(5, x_train, y_train, x_test, y_test, tuner_type, NUM_FEATURES)
 
@@ -53,10 +51,23 @@ def compare():
     print("Before tuning:  ", res1)
     res2 = run_and_tune("random")
     print("After tuning:   ", res2)
-   
-run()
+
+def train_on_simulation():
+    df = pd.read_csv("simulated_game_data.csv")
+    df = pd.get_dummies(data=df, columns=['stage', 'action','play_style'])
+    features = df.drop(['hand_quality'], axis=1)
+    labels = df['hand_quality']
+    nn = PokerNN((13, 16, 3), features, labels, ('relu', 'softmax'))
+    X_train, X_test, y_train, y_test = train_test_split(features, labels, test_size=0.33)
+    t_score = nn.opponent_modeling(20,256,X_train, X_test, y_train, y_test)
+    print(t_score)
+
+
+train_on_simulation()
+#score, t = run()
+#print(score,t)
 #run_vary_epochs()
-run_and_tune("random")
+#run_and_tune("random")
 #run_and_tune("hyperband")
 #run_and_tune("bayes")
 #compare()
