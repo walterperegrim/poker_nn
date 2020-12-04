@@ -38,18 +38,21 @@ class PokerNN:
         print("Baseline: %.2f%% (%.2f%%)" % (results.mean()*100, results.std()*100))
 
     def eval(self, epochs, batch_size, X_train, X_test, y_train, y_test, plot):
-        labels = ['Bet', 'Check', 'Fold']
+        labels = ['bets', 'calls', 'checks', 'folds','raises','re-raises']
         model = Sequential()
         model.add(Dense(self.hiddenNodes, input_dim=self.inputNodes, activation=self.hiddenActivation))
         model.add(Dense(self.hiddenNodes, activation=self.hiddenActivation))
         model.add(Dense(self.hiddenNodes, activation=self.hiddenActivation))
         model.add(Dense(self.outputNodes, activation=self.outputActivation))
         model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
-        hist = model.fit(X_train, y_train, epochs = epochs, batch_size = batch_size, verbose=0)
+        hist = model.fit(X_train, y_train, epochs = epochs, batch_size = batch_size, verbose=1)
         if plot:
             self.plot(hist)
         test_score = model.evaluate(X_test, y_test,batch_size=batch_size)
-        #yhats = [list(x) for x in model.predict(X_test,batch_size=batch_size)]
+        yhats = [list(x) for x in model.predict(X_test,batch_size=batch_size)]
+        print(test_score)
+        #for i,j in zip(y_test,yhats):
+        #    print(i,labels[np.argmax(j)])
         #new_hats = [labels[np.argmax(yhat)] for yhat in yhats]
         #new_test = [labels[np.argmax(y)] for y in y_test]
         #x = np.sum([1 for i in range(len(new_test)) if new_test[i] == new_hats[i]]) / len(new_test)
