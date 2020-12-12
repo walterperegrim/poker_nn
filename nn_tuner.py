@@ -61,7 +61,7 @@ def tune(epochs, x_train, y_train, x_test, y_test, tuner_type, input_dim):
             objective ='val_accuracy',
             seed = 1, 
             executions_per_trial=2,
-            directory='F:\\poker-nn\\hyperband',
+            directory='hyperband',
             project_name='poker-nn'
         )
     if tuner_type == "random":
@@ -69,9 +69,9 @@ def tune(epochs, x_train, y_train, x_test, y_test, tuner_type, input_dim):
             hypermodel, 
             objective ='val_accuracy',
             seed = 1, 
-            max_trials = 1,
+            max_trials = 5000,
             executions_per_trial=2,
-            directory='F:\\poker-nn\\random_search',
+            directory='random_search',
             project_name='poker-nn'
         )
     if tuner_type == "bayes":
@@ -81,7 +81,7 @@ def tune(epochs, x_train, y_train, x_test, y_test, tuner_type, input_dim):
             seed = 1, 
             max_trials = 5000,
             executions_per_trial=2,
-            directory='F:\\poker-nn\\bayesian_opt',
+            directory='bayesian_opt',
             project_name='poker-nn'
         )
     

@@ -71,10 +71,10 @@ def run_ordinal():
     x_train, x_test, y_train, y_test = train_test_split(inputs, binaryLabels, test_size=0.33)
     tune(5, x_train, y_train, x_test, y_test, "random", NUM_FEATURES)
 
-train_on_simulation()
+#train_on_simulation()
 #score, t = run()
 #print(score,t)
-#run()
+run()
 #run_vary_epochs()
 #run_and_tune("random")
 #run_and_tune("hyperband")
